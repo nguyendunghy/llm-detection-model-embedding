@@ -16,8 +16,10 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
+import traceback
 import typing
 import bittensor as bt
+import requests
 
 import random
 
@@ -33,6 +35,7 @@ from miners.ppl_model import PPLModel
 from transformers.utils import logging as hf_logging
 
 from miners.deberta_classifier import DebertaClassifier
+from neurons.app_config import AppConfig
 
 hf_logging.set_verbosity(40)
 
@@ -48,19 +51,11 @@ class Miner(BaseMinerNeuron):
 
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
-
-        if self.config.neuron.model_type == 'ppl':
-            self.model = PPLModel(device=self.device)
-            self.model.load_pretrained(self.config.neuron.ppl_model_path)
-        else:
-            self.model = DebertaClassifier(foundation_model_path=self.config.neuron.deberta_foundation_model_path,
-                                           model_path=self.config.neuron.deberta_model_path,
-                                           device=self.device)
-
+        self.app_config = AppConfig()
         self.load_state()
 
     async def forward(
-        self, synapse: detection.protocol.TextSynapse
+            self, synapse: detection.protocol.TextSynapse
     ) -> detection.protocol.TextSynapse:
         """
         Processes the incoming 'TextSynapse' synapse by performing a predefined operation on the input data.
@@ -84,24 +79,43 @@ class Miner(BaseMinerNeuron):
             return synapse
 
         input_data = synapse.texts
-        bt.logging.info(f"Amount of texts recieved: {len(input_data)}")
+        self.app_config.load_app_config()
+        bt.logging.info(f"Amount of texts received: {len(input_data)}")
+        if self.app_config.allow_show_input():
+            bt.logging.info(f'input data:: {input_data}')
 
-        try:
-            preds = self.model.predict_batch(input_data)
-            preds = [el > 0.5 for el in preds]
-        except Exception as e:
-            bt.logging.error('Couldnt proceed text "{}..."'.format(input_data))
-            bt.logging.error(e)
-            preds = [0] * len(input_data)
+        preds = self.call_server(validator_hotkey=synapse.dendrite.hotkey, input_data=input_data)
 
         bt.logging.info(f"Made predictions in {int(time.time() - start_time)}s")
 
         synapse.predictions = preds
         return synapse
 
+    def call_server(self, validator_hotkey, input_data):
+        try:
+            body_data = {"list_text": input_data, "validator_hotkey": validator_hotkey}
+            url = self.app_config.get_server_url()
+            timeout = self.app_config.get_server_timeout()
+            headers = {
+                'Content-Type': 'application/json'
+            }
+            response = requests.request("POST", url[0], headers=headers, json=body_data, timeout=timeout)
+            if response.status_code == 200:
+                data = response.json()
+                result = data['result']
+                return result
+            else:
+                bt.logging.info('Failed to post data:status_code', response.status_code)
+                bt.logging.info('Failed to post data:', response.content)
+                return [False] * len(input_data)
+
+        except Exception as e:
+            bt.logging.error(e)
+            traceback.print_exc()
+            return [False] * 300
 
     async def blacklist(
-        self, synapse: detection.protocol.TextSynapse
+            self, synapse: detection.protocol.TextSynapse
     ) -> typing.Tuple[bool, str]:
         """
         Determines whether an incoming request should be blacklisted and thus ignored. Your implementation should
@@ -132,6 +146,26 @@ class Miner(BaseMinerNeuron):
 
         Otherwise, allow the request to be processed further.
         """
+
+        whitelist_hotkeys = self.app_config.get_whitelist_hotkeys()
+        bt.logging.info("whitelist_hotkeys: " + str(whitelist_hotkeys))
+        bt.logging.info("validator hot key: " + str(synapse.dendrite.hotkey))
+        if str(synapse.dendrite.hotkey) in whitelist_hotkeys:
+            return False, 'hotkey {} in whitelist hotkeys'.format(str(synapse.dendrite.hotkey))
+
+        black_list_enable = self.app_config.enable_blacklist_validator()
+        if not black_list_enable:
+            bt.logging.info("do not blacklist any validators !!")
+            self.blacklist_hotkeys = set()
+            return False, "Do not blacklist any validators !"
+        else:
+            app_blacklist_hotkeys = self.app_config.get_blacklist_hotkeys()
+            bt.logging.info(f'List of blacklisted hotkeys in app_config: {app_blacklist_hotkeys}')
+            for hotkey in app_blacklist_hotkeys:
+                self.blacklist_hotkeys.add(hotkey)
+            if self.blacklist_hotkeys.__contains__(str(synapse.dendrite.hotkey)):
+                return True, 'Hot key in blacklist: ' + str(synapse.dendrite.hotkey)
+
         if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
             # Ignore requests from unrecognized entities.
             bt.logging.trace(

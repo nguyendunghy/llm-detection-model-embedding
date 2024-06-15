@@ -1,0 +1,20 @@
+{
+  "application": {
+    "miner": {
+      "show_input": false,
+      "black_list_enable": true,
+      "blacklist_hotkeys": [],
+      "whitelist_hotkeys": ["5FKstHjZkh4v3qAMSBa1oJcHCLjxYZ8SNTSz1opTv4hR7gVB"],
+      "server": {
+        "urls": [],
+        "timeout": 15
+      },
+      "test_net": {
+        "enable_input_from_file": false,
+        "input_dir_path": "/root/head-tail-llm-detection/test_data/input_data",
+        "processed_dir_path": "/root/head-tail-llm-detection/test_data/processed_data"
+      }
+    }
+  }
+}
+
