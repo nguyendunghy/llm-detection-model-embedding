@@ -93,6 +93,14 @@ class AppConfig(ABC):
             traceback.print_exc()
         return []
 
+    def get_miner_input_log_dir_path(self):
+        try:
+            return self.value['application']['miner']['miner_input_log_dir']
+        except Exception as e:
+            bt.logging.error(e)
+            traceback.print_exc()
+        return '/root/llm-detection-model-embedding/sample_data'
+
     def get_miner_test_input_dir_path(self):
         try:
             return self.value['application']['miner']['test_net']['input_dir_path']
@@ -117,7 +125,7 @@ class AppConfig(ABC):
             traceback.print_exc()
         return False
 
-    def get_server_url(self):
+    def get_server_urls(self):
         try:
             return self.value['application']['miner']['server']['urls']
         except Exception as e:
@@ -148,16 +156,18 @@ class AppConfig(ABC):
 
 
 if __name__ == '__main__':
-    app_config = AppConfig('/Users/nannan/IdeaProjects/bittensor/head-tail-llm-detection/application.json')
+    app_config = AppConfig('/Users/nannan/IdeaProjects/bittensor/llm-detection-model-embedding/application.json')
     print(app_config)
     print(app_config.value)
-    print('enable_blacklist_validator', app_config._enable_blacklist_validator())
-    print('allow_show_input', app_config._allow_show_input())
-    print('get_blacklist_hotkeys', app_config._get_blacklist_hotkeys())
-    print('get_whitelist_hotkeys', app_config._get_whitelist_hotkeys())
+    print('allow_show_input', app_config.allow_show_input())
+    print('enable_blacklist_validator', app_config.enable_blacklist_validator())
+    print('get_blacklist_hotkeys', app_config.get_blacklist_hotkeys())
+    print('get_whitelist_hotkeys', app_config.get_whitelist_hotkeys())
+    print('get_miner_input_log_dir_path', app_config.get_miner_input_log_dir_path())
+    print('get_miner_test_input_dir_path', app_config.get_miner_test_input_dir_path())
+    print('get_server_url', app_config.get_server_urls())
+    print('get_server_timeout', app_config.get_server_timeout())
 
-    print('enable_miner_get_input_from_file', app_config._enable_miner_get_input_from_file())
-    print('get_miner_test_input_dir_path', app_config._get_miner_test_input_dir_path())
 
     while True:
         ...

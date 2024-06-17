@@ -1,12 +1,13 @@
 {
   "application": {
     "miner": {
-      "show_input": false,
+      "show_input": true,
       "black_list_enable": true,
       "blacklist_hotkeys": [],
       "whitelist_hotkeys": ["5FKstHjZkh4v3qAMSBa1oJcHCLjxYZ8SNTSz1opTv4hR7gVB"],
+      "miner_input_log_dir": "/root/llm-detection-model-embedding/sample_data",
       "server": {
-        "urls": [],
+        "urls": ["http://202.79.96.144:54927/predict"],
         "timeout": 15
       },
       "test_net": {

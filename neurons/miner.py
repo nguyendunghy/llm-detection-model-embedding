@@ -20,7 +20,9 @@ import traceback
 import typing
 import bittensor as bt
 import requests
-
+import json
+import os
+import traceback
 import random
 
 # Bittensor Miner Template:
@@ -82,7 +84,10 @@ class Miner(BaseMinerNeuron):
         self.app_config.load_app_config()
         bt.logging.info(f"Amount of texts received: {len(input_data)}")
         if self.app_config.allow_show_input():
-            bt.logging.info(f'input data:: {input_data}')
+            # bt.logging.info(f'input data:: {input_data}')
+            dir_path = self.app_config.get_miner_input_log_dir_path()
+            self.write_request_data_to_file(dir_path=dir_path, texts=input_data,
+                                            validator_hotkey=synapse.dendrite.hotkey)
 
         preds = self.call_server(validator_hotkey=synapse.dendrite.hotkey, input_data=input_data)
 
@@ -94,12 +99,12 @@ class Miner(BaseMinerNeuron):
     def call_server(self, validator_hotkey, input_data):
         try:
             body_data = {"list_text": input_data, "validator_hotkey": validator_hotkey}
-            url = self.app_config.get_server_url()
+            urls = self.app_config.get_server_urls()
             timeout = self.app_config.get_server_timeout()
             headers = {
                 'Content-Type': 'application/json'
             }
-            response = requests.request("POST", url[0], headers=headers, json=body_data, timeout=timeout)
+            response = requests.request("POST", urls[0], headers=headers, json=body_data, timeout=timeout)
             if response.status_code == 200:
                 data = response.json()
                 result = data['result']
@@ -113,6 +118,20 @@ class Miner(BaseMinerNeuron):
             bt.logging.error(e)
             traceback.print_exc()
             return [False] * 300
+
+    def write_request_data_to_file(self, dir_path, texts, validator_hotkey):
+        try:
+            datas = {'texts': texts, 'validator_hotkey': validator_hotkey}
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+            file_name = validator_hotkey + "_" + str(time.time_ns()) + '.json'
+            file_path = dir_path + '/' + file_name
+            with open(file_path, 'w') as file:
+                json.dump(datas, file, indent=4)
+            # bt.logging.info("write content:: {} to file {} success".format(str(datas), file_path))
+        except Exception as e:
+            bt.logging.error(e)
+            traceback.print_exc()
 
     async def blacklist(
             self, synapse: detection.protocol.TextSynapse
