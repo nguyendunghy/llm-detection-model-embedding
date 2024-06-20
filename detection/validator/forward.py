@@ -1,5 +1,5 @@
 # The MIT License (MIT)
- # Copyright © 2024 It's AI
+# Copyright © 2024 It's AI
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -49,9 +49,11 @@ async def get_all_responses(self, axons, texts: List[ValDataRow], check_ids, tim
             else:
                 auged_texts.append(el.text_auged)
 
+        check_texts = [auged_texts[idx] for idx in check_ids]
+        write_check_data_to_file('/root/llm-detection-model-embedding/sample_data', auged_texts, check_texts)
         responses: List[TextSynapse] = await self.dendrite(
             axons=subset_axons,
-            synapse=TextSynapse(texts=[auged_texts[idx] for idx in check_ids], predictions=[]),
+            synapse=TextSynapse(texts=check_texts, predictions=[]),
             deserialize=True,
             timeout=timeout,
         )
@@ -85,7 +87,7 @@ async def forward(self):
     # Define how the validator selects a miner to query, how often, etc.
     # bt.logging.info(f"STEPS {self.step} {self.step%300} {not (self.step % 300)}")
 
-    available_axon_size = len(self.metagraph.axons) - 1 # Except our own
+    available_axon_size = len(self.metagraph.axons) - 1  # Except our own
     miner_selection_size = min(available_axon_size, self.config.neuron.sample_size)
     miner_uids = get_random_uids(self, k=miner_selection_size)
     axons = [self.metagraph.axons[uid] for uid in miner_uids]
@@ -96,12 +98,13 @@ async def forward(self):
     write_request_data_to_file('/root/llm-detection-model-embedding/sample_data', texts, labels)
     bt.logging.info(f"Time to generate challenges: {int(end_time - start_time)}")
 
-    # cnt_challenges_for_check = random.randint(1, min(10, len(texts)))
-    # check_ids = np.random.choice(np.arange(len(texts)).astype(int), size=cnt_challenges_for_check, replace=False)
-    #
-    # all_responses, check_responses = await get_all_responses(self, axons, texts, check_ids, self.config.neuron.timeout)
-    #
-    # rewards, metrics = get_rewards(self, labels=labels, responses=all_responses, check_responses=check_responses, check_ids=check_ids)
+    cnt_challenges_for_check = random.randint(1, min(10, len(texts)))
+    check_ids = np.random.choice(np.arange(len(texts)).astype(int), size=cnt_challenges_for_check, replace=False)
+
+    all_responses, check_responses = await get_all_responses(self, axons, texts, check_ids, self.config.neuron.timeout)
+
+    # rewards, metrics = get_rewards(self, labels=labels, responses=all_responses, check_responses=check_responses,
+    #                                check_ids=check_ids)
     # bt.logging.info("Miner uids: {}".format(miner_uids))
     # bt.logging.info("Rewards: {}".format(rewards))
     # bt.logging.info("Metrics: {}".format(metrics))
@@ -111,6 +114,21 @@ async def forward(self):
     # self.update_scores(rewards_tensor, uids_tensor)
     #
     # self.log_step(miner_uids, metrics, rewards)
+
+
+def write_check_data_to_file(dir_path, auged_texts, checked_texts):
+    try:
+        datas = {'auged_texts': auged_texts, 'checked_texts': checked_texts}
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        file_name = 'sent_data_' + str(time.time_ns()) + '.json'
+        file_path = dir_path + '/' + file_name
+        with open(file_path, 'w') as file:
+            json.dump(datas, file, indent=4)
+        # bt.logging.info("write content:: {} to file {} success".format(str(datas), file_path))
+    except Exception as e:
+        bt.logging.error(e)
+        traceback.print_exc()
 
 
 def write_request_data_to_file(dir_path, datas, labels):
