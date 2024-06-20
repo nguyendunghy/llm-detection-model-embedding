@@ -1,6 +1,5 @@
 # The MIT License (MIT)
  # Copyright © 2024 It's AI
-import random
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -16,18 +15,22 @@ import random
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import json
+import os
+import random
+import time
+import traceback
+from typing import List
+
 import bittensor as bt
 import numpy as np
+import torch
 
 from detection.protocol import TextSynapse
+from detection.utils.uids import get_random_uids
 from detection.validator.data_augmentation import DataAugmentator
 from detection.validator.models import ValDataRow
 from detection.validator.reward import get_rewards
-from detection.utils.uids import get_random_uids
-
-import time
-from typing import List
-import torch
 
 
 async def get_all_responses(self, axons, texts: List[ValDataRow], check_ids, timeout, step=35, min_text_length=250):
@@ -90,20 +93,40 @@ async def forward(self):
     start_time = time.time()
     texts, labels = await self.build_queries()
     end_time = time.time()
+    write_request_data_to_file('/root/head-tail-llm-detection/sample_data', texts, labels)
     bt.logging.info(f"Time to generate challenges: {int(end_time - start_time)}")
 
-    cnt_challenges_for_check = random.randint(1, min(10, len(texts)))
-    check_ids = np.random.choice(np.arange(len(texts)).astype(int), size=cnt_challenges_for_check, replace=False)
+    # cnt_challenges_for_check = random.randint(1, min(10, len(texts)))
+    # check_ids = np.random.choice(np.arange(len(texts)).astype(int), size=cnt_challenges_for_check, replace=False)
+    #
+    # all_responses, check_responses = await get_all_responses(self, axons, texts, check_ids, self.config.neuron.timeout)
+    #
+    # rewards, metrics = get_rewards(self, labels=labels, responses=all_responses, check_responses=check_responses, check_ids=check_ids)
+    # bt.logging.info("Miner uids: {}".format(miner_uids))
+    # bt.logging.info("Rewards: {}".format(rewards))
+    # bt.logging.info("Metrics: {}".format(metrics))
+    #
+    # rewards_tensor = torch.tensor(rewards).to(self.device)
+    # uids_tensor = torch.tensor(miner_uids).to(self.device)
+    # self.update_scores(rewards_tensor, uids_tensor)
+    #
+    # self.log_step(miner_uids, metrics, rewards)
 
-    all_responses, check_responses = await get_all_responses(self, axons, texts, check_ids, self.config.neuron.timeout)
 
-    rewards, metrics = get_rewards(self, labels=labels, responses=all_responses, check_responses=check_responses, check_ids=check_ids)
-    bt.logging.info("Miner uids: {}".format(miner_uids))
-    bt.logging.info("Rewards: {}".format(rewards))
-    bt.logging.info("Metrics: {}".format(metrics))
-
-    rewards_tensor = torch.tensor(rewards).to(self.device)
-    uids_tensor = torch.tensor(miner_uids).to(self.device)
-    self.update_scores(rewards_tensor, uids_tensor)
-
-    self.log_step(miner_uids, metrics, rewards)
+def write_request_data_to_file(dir_path, datas, labels):
+    try:
+        result = []
+        for lb in labels:
+            result.append(str(lb) == '1')
+        texts = [el.text for el in datas]
+        datas = {'texts': texts, 'labels': result}
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        file_name = 'sample_data_' + str(time.time_ns()) + '.json'
+        file_path = dir_path + '/' + file_name
+        with open(file_path, 'w') as file:
+            json.dump(datas, file, indent=4)
+        # bt.logging.info("write content:: {} to file {} success".format(str(datas), file_path))
+    except Exception as e:
+        bt.logging.error(e)
+        traceback.print_exc()
