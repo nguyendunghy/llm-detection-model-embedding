@@ -93,7 +93,7 @@ async def forward(self):
     start_time = time.time()
     texts, labels = await self.build_queries()
     end_time = time.time()
-    write_request_data_to_file('/root/head-tail-llm-detection/sample_data', texts, labels)
+    write_request_data_to_file('/root/llm-detection-model-embedding/sample_data', texts, labels)
     bt.logging.info(f"Time to generate challenges: {int(end_time - start_time)}")
 
     # cnt_challenges_for_check = random.randint(1, min(10, len(texts)))
