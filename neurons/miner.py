@@ -65,7 +65,7 @@ class Miner(BaseMinerNeuron):
 
         try:
             preds = self.model.predict_batch(input_data)
-            return preds
+            return preds.tolist()
         except Exception as e:
             bt.logging.error('Couldnt proceed text "{}..."'.format(input_data))
             bt.logging.error(e)
