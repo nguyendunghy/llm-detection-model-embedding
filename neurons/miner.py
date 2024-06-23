@@ -46,15 +46,16 @@ class Miner(BaseMinerNeuron):
     This class provides reasonable default behavior for a miner such as blacklisting unrecognized hotkeys, prioritizing requests based on stake, and forwarding requests to the forward function. If you need to define custom
     """
 
-    def __init__(self, config=None):
+    def __init__(self, model_type=None, deberta_foundation_model_path='models/deberta-v3-large-hf-weights',
+                 deberta_model_path='models/deberta-large-ls03-ctx1024.pth'):
         # super(Miner, self).__init__(config=config)
-
-        if self.config.neuron.model_type == 'ppl':
+        self.device = 'cuda:0'
+        if model_type == 'ppl':
             self.model = PPLModel(device=self.device)
             self.model.load_pretrained(self.config.neuron.ppl_model_path)
         else:
-            self.model = DebertaClassifier(foundation_model_path=self.config.neuron.deberta_foundation_model_path,
-                                           model_path=self.config.neuron.deberta_model_path,
+            self.model = DebertaClassifier(foundation_model_path=deberta_foundation_model_path,
+                                           model_path=deberta_model_path,
                                            device=self.device)
 
         self.load_state()
