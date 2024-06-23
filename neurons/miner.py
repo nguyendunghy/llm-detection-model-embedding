@@ -59,8 +59,19 @@ class Miner(BaseMinerNeuron):
 
         self.load_state()
 
+    def api_predict(self, input_data):
+        bt.logging.info(f"Length of texts  api_predict: {len(input_data)}")
+
+        try:
+            preds = self.model.predict_batch(input_data)
+            return preds
+        except Exception as e:
+            bt.logging.error('Couldnt proceed text "{}..."'.format(input_data))
+            bt.logging.error(e)
+            return [0] * len(input_data)
+
     async def forward(
-        self, synapse: detection.protocol.TextSynapse
+            self, synapse: detection.protocol.TextSynapse
     ) -> detection.protocol.TextSynapse:
         """
         Processes the incoming 'TextSynapse' synapse by performing a predefined operation on the input data.
@@ -99,9 +110,8 @@ class Miner(BaseMinerNeuron):
         synapse.predictions = preds
         return synapse
 
-
     async def blacklist(
-        self, synapse: detection.protocol.TextSynapse
+            self, synapse: detection.protocol.TextSynapse
     ) -> typing.Tuple[bool, str]:
         """
         Determines whether an incoming request should be blacklisted and thus ignored. Your implementation should
