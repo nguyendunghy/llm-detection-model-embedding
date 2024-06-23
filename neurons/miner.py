@@ -47,7 +47,7 @@ class Miner(BaseMinerNeuron):
     """
 
     def __init__(self, config=None):
-        super(Miner, self).__init__(config=config)
+        # super(Miner, self).__init__(config=config)
 
         if self.config.neuron.model_type == 'ppl':
             self.model = PPLModel(device=self.device)
