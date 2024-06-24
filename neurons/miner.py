@@ -47,12 +47,12 @@ class Miner(BaseMinerNeuron):
     """
 
     def __init__(self, model_type=None, deberta_foundation_model_path='models/deberta-v3-large-hf-weights',
-                 deberta_model_path='models/deberta-large-ls03-ctx1024.pth'):
+                 deberta_model_path='models/deberta-large-ls03-ctx1024.pth', ppl_model_path='models/ppl_model.pk'):
         # super(Miner, self).__init__(config=config)
         self.device = 'cuda:0'
         if model_type == 'ppl':
             self.model = PPLModel(device=self.device)
-            self.model.load_pretrained(self.config.neuron.ppl_model_path)
+            self.model.load_pretrained(ppl_model_path)
         else:
             self.model = DebertaClassifier(foundation_model_path=deberta_foundation_model_path,
                                            model_path=deberta_model_path,

@@ -15,7 +15,7 @@ def parse():
 args = parse()
 
 app = Flask(__name__)
-miner = Miner()
+miner = Miner('ppl')
 
 
 @app.route("/")
